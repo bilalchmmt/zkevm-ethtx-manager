@@ -770,9 +770,10 @@ func (c *Client) shouldContinueToMonitorThisTx(ctx context.Context, receipt *eth
 	}
 	_, err = c.etherman.GetRevertMessage(ctx, tx)
 	if err != nil {
-		// if the error when getting the revert message is not identified, continue to monitor
+		// if the error when getting the revert message is not identified, mark as failed
 		if err.Error() == ErrExecutionReverted.Error() {
-			return true
+			log.Warnf("monitored tx %v reverted with generic ErrExecutionReverted, marking as failed", receipt.TxHash.String())
+			return false
 		} else {
 			log.Errorf(
 				"failed to get revert message for monitored tx identified as failed, tx %v: %v",
