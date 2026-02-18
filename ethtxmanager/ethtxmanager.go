@@ -697,9 +697,16 @@ func (c *Client) monitorTx(ctx context.Context, mTx *monitoredTxnIteration, logg
 		confirmed, err := c.etherman.WaitTxToBeMined(ctx, signedTx, c.cfg.WaitTxToBeMined.Duration)
 		if err != nil {
 			logger.Warnf("failed to wait tx to be mined: %v", err)
-			return
-		}
-		if !confirmed {
+			// If tx was mined but reverted, get receipt and let it flow to the status check below
+			txReceipt, receiptErr := c.etherman.GetTxReceipt(ctx, signedTx.Hash())
+			if receiptErr == nil && txReceipt != nil && txReceipt.Status == ethTypes.ReceiptStatusFailed {
+				logger.Warnf("tx was mined but reverted, marking as failed")
+				mTx.lastReceipt = txReceipt
+				mTx.confirmed = true
+			} else {
+				return
+			}
+		} else if !confirmed {
 			log.Warnf("signedTx not mined yet and timeout has been reached")
 			return
 		}
